@@ -1,0 +1,55 @@
+<div class="card">
+    <h2>Módulo de Retiros</h2>
+    
+    <label>Buscar Socio (Cédula o Nombre)</label>
+    <input type="text" id="busquedaRetiro" list="listaSocios" oninput="seleccionarParaRetiro()">
+    <p id="infoSaldo" style="color: var(--accent-green); font-weight: bold; margin-top: 10px;"></p>
+
+    <div id="formRetiro" style="display:none; margin-top: 20px;">
+        <label>Monto a Retirar</label>
+        <input type="number" id="montoRetiro" step="0.01" placeholder="0.00">
+        
+        <label>Concepto / Observación</label>
+        <input type="text" id="conceptoRetiro" value="Retiro de ahorros">
+        
+        <button onclick="procesarRetiro()" class="btn-search">CONFIRMAR RETIRO</button>
+    </div>
+</div>
+
+<script>
+    // ... aquí reusamos la lógica de cargarSocios que ya tienes ...
+
+    function seleccionarParaRetiro() {
+        const val = document.getElementById('busquedaRetiro').value;
+        const socio = todosLosSocios.find(s => `${s.cedula} - ${s.nombre}` === val);
+        
+        if (socio) {
+            document.getElementById('infoSaldo').innerText = `Saldo Disponible: $${socio.saldo_ahorro}`;
+            document.getElementById('formRetiro').style.display = 'block';
+            window.socioSeleccionadoId = socio.id;
+        }
+    }
+
+    async function procesarRetiro() {
+        const monto = document.getElementById('montoRetiro').value;
+        if (!monto || monto <= 0) return alert("Ingrese un monto válido");
+
+        const res = await fetch('/api/management/retirar-dinero', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                entity_id: window.socioSeleccionadoId,
+                monto: monto,
+                concepto: document.getElementById('conceptoRetiro').value
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert("¡Retiro Exitoso!");
+            location.reload(); // Recargar para actualizar saldos
+        } else {
+            alert("Error: " + data.error);
+        }
+    }
+</script>

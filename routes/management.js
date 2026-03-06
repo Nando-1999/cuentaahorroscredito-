@@ -160,4 +160,55 @@ router.get('/historial-cuotas/:entity_id', async (req, res) => {
     }
 });
 
+// routes/management.js
+
+router.post('/retirar-dinero', async (req, res) => {
+    const { entity_id, monto, concepto } = req.body;
+    let conn;
+
+    try {
+        conn = await db.getConnection();
+        await conn.beginTransaction();
+
+        // 1. Verificar si el socio existe y tiene saldo suficiente
+        const [socio] = await conn.query(
+            "SELECT nombre, saldo_ahorro FROM entities WHERE id = ?", 
+            [entity_id]
+        );
+
+        if (!socio.length) throw new Error("Socio no encontrado");
+        
+        const saldoActual = parseFloat(socio[0].saldo_ahorro);
+        if (saldoActual < parseFloat(monto)) {
+            throw new Error(`Saldo insuficiente. Saldo disponible: $${saldoActual}`);
+        }
+
+        // 2. Restar el dinero del saldo de ahorro
+        await conn.query(
+            "UPDATE entities SET saldo_ahorro = saldo_ahorro - ? WHERE id = ?",
+            [monto, entity_id]
+        );
+
+        // 3. Registrar el movimiento de ahorro (Tipo: RETIRO)
+        await conn.query(
+            "INSERT INTO savings_history (entity_id, monto, tipo, fecha, descripcion) VALUES (?, ?, 'RETIRO', NOW(), ?)",
+            [entity_id, monto, concepto || 'Retiro de ahorros por ventanilla']
+        );
+
+        // 4. Asiento Contable (Opcional pero recomendado para Alejandra)
+        // Debe haber un DEBE a la cuenta de Ahorros (Pasivo disminuye) 
+        // y un HABER a Caja (Activo disminuye)
+        
+        await conn.commit();
+        res.json({ success: true, message: "Retiro procesado correctamente" });
+
+    } catch (err) {
+        if (conn) await conn.rollback();
+        res.status(400).json({ error: err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+
 module.exports = router;
