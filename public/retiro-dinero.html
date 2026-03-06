@@ -1,38 +1,191 @@
-<div class="card">
-    <h2>Módulo de Retiros</h2>
-    
-    <label>Buscar Socio (Cédula o Nombre)</label>
-    <input type="text" id="busquedaRetiro" list="listaSocios" oninput="seleccionarParaRetiro()">
-    <p id="infoSaldo" style="color: var(--accent-green); font-weight: bold; margin-top: 10px;"></p>
+<div class="retiros-container">
+    <header class="retiros-header">
+        <h1>Módulo de Retiros</h1>
+        <p>Gestión de salidas de efectivo - Cooperativa</p>
+    </header>
 
-    <div id="formRetiro" style="display:none; margin-top: 20px;">
-        <label>Monto a Retirar</label>
-        <input type="number" id="montoRetiro" step="0.01" placeholder="0.00">
-        
-        <label>Concepto / Observación</label>
-        <input type="text" id="conceptoRetiro" value="Retiro de ahorros">
-        
-        <button onclick="procesarRetiro()" class="btn-search">CONFIRMAR RETIRO</button>
+    <div class="retiros-card search-area">
+        <div class="retiros-input-group">
+            <label><i class="fas fa-search"></i> Buscar Socio (Cédula o Nombre)</label>
+            <input type="text" id="busquedaRetiro" list="listaSocios" placeholder="Escriba para buscar..." oninput="seleccionarParaRetiro()">
+            <datalist id="listaSocios"></datalist>
+        </div>
+    </div>
+
+    <div id="formRetiro" class="retiros-form-container" style="display:none;">
+        <div class="retiros-stats">
+            <div class="stat-box">
+                <span class="label">Saldo Disponible</span>
+                <span class="value" id="infoSaldo">$ 0.00</span>
+            </div>
+        </div>
+
+        <div class="retiros-card action-area">
+            <div class="retiros-input-group">
+                <label>Monto a Retirar ($)</label>
+                <input type="number" id="montoRetiro" step="0.01" placeholder="0.00" class="monto-input">
+            </div>
+
+            <div class="retiros-input-group">
+                <label>Concepto / Observación</label>
+                <input type="text" id="conceptoRetiro" value="Retiro de ahorros por ventanilla">
+            </div>
+
+            <button onclick="procesarRetiro()" class="btn-confirmar">
+                <i class="fas fa-print"></i> CONFIRMAR E IMPRIMIR TICKET
+            </button>
+        </div>
     </div>
 </div>
 
+<div id="comprobanteRetiro" style="display: none;">
+    <div style="width: 80mm; padding: 5px; font-family: 'Courier New', Courier, monospace; color: #000; background: #fff; margin: 0 auto;">
+        <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px;">
+            <h2 style="margin: 0; font-size: 1.2rem;">CONTASISTEMAS CORE</h2>
+            <p style="margin: 0; font-size: 0.7rem;">Quito - Ecuador</p>
+            <p style="margin: 5px 0; font-weight: bold; font-size: 0.9rem;">COMPROBANTE DE RETIRO</p>
+        </div>
+        <div style="margin-top: 15px; font-size: 0.85rem;">
+            <p style="margin: 3px 0;"><b>Fecha:</b> <span id="pFecha"></span></p>
+            <p style="margin: 3px 0;"><b>Socio:</b> <span id="pSocio"></span></p>
+            <p style="margin: 3px 0;"><b>Cédula:</b> <span id="pCedula"></span></p>
+            <hr style="border: 0; border-top: 1px dashed #000; margin: 10px 0;">
+            <p style="font-size: 1.1rem; text-align: center; margin: 10px 0;">
+                <b>TOTAL: $ <span id="pMonto"></span></b>
+            </p>
+        </div>
+        <div style="margin-top: 40px; text-align: center;">
+            <div style="border-top: 1px solid #000; width: 80%; margin: 0 auto;"></div>
+            <p style="font-size: 0.7rem;">FIRMA DEL SOCIO</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* CSS INTEGRADO PARA ASEGURAR EL DISEÑO DARK */
+    :root {
+        --bg-dark: #0f172a;
+        --card-bg: #1e293b;
+        --accent: #8b5cf6;
+        --accent-green: #10b981;
+        --text-main: #f8fafc;
+        --text-dim: #94a3b8;
+    }
+
+    .retiros-container {
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .retiros-header h1 { font-size: 2rem; margin-bottom: 5px; color: var(--text-main); }
+    .retiros-header p { color: var(--text-dim); margin-bottom: 30px; }
+
+    .retiros-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 25px;
+        border: 1px solid rgba(255,255,255,0.05);
+        margin-bottom: 20px;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    }
+
+    .retiros-input-group { margin-bottom: 20px; }
+    .retiros-input-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-dim); }
+    
+    .retiros-input-group input {
+        width: 100%;
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 12px 15px;
+        color: white;
+        font-size: 1rem;
+        transition: border 0.3s;
+    }
+
+    .retiros-input-group input:focus { border-color: var(--accent); outline: none; }
+
+    .monto-input { font-size: 1.8rem !important; font-weight: bold; color: var(--accent-green) !important; text-align: center; }
+
+    .stat-box {
+        background: rgba(16, 185, 129, 0.1);
+        border-left: 4px solid var(--accent-green);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-box .label { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-box .value { color: var(--accent-green); font-size: 2rem; font-weight: 800; }
+
+    .btn-confirmar {
+        width: 100%;
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 18px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: transform 0.2s, background 0.3s;
+    }
+
+    .btn-confirmar:hover { background: #7c3aed; transform: translateY(-2px); }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .retiros-form-container { animation: fadeIn 0.4s ease forwards; }
+
+    @media print {
+        body * { visibility: hidden; }
+        #comprobanteRetiro, #comprobanteRetiro * { visibility: visible; }
+        #comprobanteRetiro { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
+    }
+</style>
+
 <script>
-    // ... aquí reusamos la lógica de cargarSocios que ya tienes ...
+    // Tu lógica de JS se mantiene igual porque los IDs son los mismos
+    let todosLosSocios = [];
+
+    async function cargarSocios() {
+        try {
+            const res = await fetch('/api/management/entities');
+            todosLosSocios = await res.json();
+            const datalist = document.getElementById('listaSocios');
+            datalist.innerHTML = '';
+            todosLosSocios.forEach(s => {
+                const item = document.createElement('option');
+                item.value = `${s.cedula} - ${s.nombre}`;
+                datalist.appendChild(item);
+            });
+        } catch (err) { console.error("Error:", err); }
+    }
 
     function seleccionarParaRetiro() {
         const val = document.getElementById('busquedaRetiro').value;
         const socio = todosLosSocios.find(s => `${s.cedula} - ${s.nombre}` === val);
         
         if (socio) {
-            document.getElementById('infoSaldo').innerText = `Saldo Disponible: $${socio.saldo_ahorro}`;
+            document.getElementById('infoSaldo').innerText = `$ ${parseFloat(socio.saldo_ahorro).toFixed(2)}`;
             document.getElementById('formRetiro').style.display = 'block';
             window.socioSeleccionadoId = socio.id;
+        } else {
+            document.getElementById('formRetiro').style.display = 'none';
         }
     }
 
     async function procesarRetiro() {
         const monto = document.getElementById('montoRetiro').value;
-        if (!monto || monto <= 0) return alert("Ingrese un monto válido");
+        const concepto = document.getElementById('conceptoRetiro').value;
+        const socioTexto = document.getElementById('busquedaRetiro').value;
+
+        if (!monto || monto <= 0) return alert("Por favor, ingrese un monto válido.");
+        if (!confirm(`¿Confirmar retiro de $${monto} para este socio?`)) return;
 
         const res = await fetch('/api/management/retirar-dinero', {
             method: 'POST',
@@ -40,16 +193,24 @@
             body: JSON.stringify({
                 entity_id: window.socioSeleccionadoId,
                 monto: monto,
-                concepto: document.getElementById('conceptoRetiro').value
+                concepto: concepto
             })
         });
 
         const data = await res.json();
+        
         if (data.success) {
-            alert("¡Retiro Exitoso!");
-            location.reload(); // Recargar para actualizar saldos
+            document.getElementById('pFecha').innerText = new Date().toLocaleString();
+            document.getElementById('pSocio').innerText = socioTexto.split(' - ')[1];
+            document.getElementById('pCedula').innerText = socioTexto.split(' - ')[0];
+            document.getElementById('pMonto').innerText = parseFloat(monto).toFixed(2);
+            window.print();
+            alert("Retiro procesado correctamente.");
+            location.reload(); 
         } else {
             alert("Error: " + data.error);
         }
     }
+
+    window.onload = cargarSocios;
 </script>
