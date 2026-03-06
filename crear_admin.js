@@ -14,11 +14,12 @@ const crearUsuario = async () => {
         await db.query(sql, [user, hashedPass, 'admin']);
 
         console.log('---------------------------------------');
-        console.log('✅ USUARIO CREADO EXITOSAMENTE');
+        console.log('✅ Usuario Creado Exitosamente');
         console.log(`Usuario: ${user}`);
         console.log(`Clave: ${pass}`);
         console.log('---------------------------------------');
 
+        
         process.exit();
     } catch (err) {
         console.error('❌ Error:', err.message);
