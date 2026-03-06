@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estado de Cuenta | ContaSistemas Core</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #020617;
+            --card: #1e293b;
+            --accent: #06b6d4;
+            --accent-green: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        .search-section {
+            background: var(--card);
+            padding: 25px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .input-group { flex: 1; position: relative; }
+        label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+        
+        input, button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: #0f172a;
+            color: white;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        .btn-search {
+            background: var(--accent);
+            color: var(--bg);
+            font-weight: 800;
+            border: none;
+            cursor: pointer;
+            width: 150px;
+            transition: 0.3s;
+            height: 45px;
+        }
+
+        .btn-search:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        /* --- DASHBOARD DE SOCIO --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .stat-val { font-size: 1.8rem; font-weight: 800; display: block; margin-top: 5px; }
+        .val-ahorro { color: var(--accent-green); }
+        .val-prestamo { color: #f43f5e; }
+
+        /* --- TABLA DE CUOTAS --- */
+        .table-container {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { text-align: left; color: var(--text-muted); font-size: 0.75rem; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        td { padding: 12px; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+        .badge-pendiente { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .badge-pagado { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header style="margin-bottom: 30px;">
+        <h1 style="font-weight: 800; font-size: 2rem; margin: 0;">Estado de Cuenta</h1>
+        <p style="color: var(--text-muted);">Consulta el historial financiero por Nombre o Cédula.</p>
+    </header>
+
+    <div class="search-section">
+        <div class="input-group">
+            <label>Buscar Socio</label>
+            <input type="text" id="inputBusqueda" list="listaSocios" placeholder="Escriba nombre o cédula..." oninput="verificarSocio()">
+            <datalist id="listaSocios"></datalist>
+            <input type="hidden" id="socioIdSeleccionado">
+        </div>
+        <button class="btn-search" onclick="consultarEstado()">CONSULTAR</button>
+    </div>
+
+    <div id="dashboardSocio" style="display: none;">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">Ahorro Total</span>
+                <span class="stat-val val-ahorro" id="resumenAhorro">$ 0.00</span>
+            </div>
+            <div class="stat-card">
+                <span style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">Saldo Préstamo</span>
+                <span class="stat-val val-prestamo" id="resumenPrestamo">$ 0.00</span>
+            </div>
+            <div class="stat-card">
+                <span style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">Cuotas Pendientes</span>
+                <span class="stat-val" id="resumenCuotas" style="color: var(--accent);">0</span>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <h3 style="margin-bottom: 20px;">Calendario de Pagos</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>VENCIMIENTO</th>
+                        <th>MONTO</th>
+                        <th>ESTADO</th>
+                        <th>FECHA PAGO</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCuotas"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let todosLosSocios = [];
+
+    async function cargarSocios() {
+        try {
+            const res = await fetch('/api/management/entities');
+            todosLosSocios = await res.json();
+            const datalist = document.getElementById('listaSocios');
+            
+            datalist.innerHTML = '';
+            todosLosSocios.forEach(s => {
+                // El value combina cédula y nombre para que el navegador busque en ambos
+                const item = document.createElement('option');
+                item.value = `${s.cedula} - ${s.nombre}`;
+                datalist.appendChild(item);
+            });
+        } catch (err) { console.error("Error al cargar socios:", err); }
+    }
+
+    function verificarSocio() {
+        const busqueda = document.getElementById('inputBusqueda').value;
+        const hiddenId = document.getElementById('socioIdSeleccionado');
+        
+        // Buscamos si el texto ingresado coincide exactamente con alguna opción
+        const socio = todosLosSocios.find(s => `${s.cedula} - ${s.nombre}` === busqueda);
+        
+        if (socio) {
+            hiddenId.value = socio.id;
+            // Guardamos datos temporales para la cabecera
+            hiddenId.dataset.ahorro = socio.saldo_ahorro;
+            hiddenId.dataset.prestamo = socio.saldo_prestamo;
+        } else {
+            hiddenId.value = "";
+        }
+    }
+
+    async function consultarEstado() {
+        const socioId = document.getElementById('socioIdSeleccionado').value;
+        const hiddenInfo = document.getElementById('socioIdSeleccionado');
+
+        if (!socioId) {
+            alert("Por favor, seleccione un socio válido de la lista.");
+            return;
+        }
+
+        // Actualizar los cuadros de arriba con los datos del socio
+        document.getElementById('resumenAhorro').innerText = `$ ${parseFloat(hiddenInfo.dataset.ahorro).toFixed(2)}`;
+        document.getElementById('resumenPrestamo').innerText = `$ ${parseFloat(hiddenInfo.dataset.prestamo).toFixed(2)}`;
+
+        try {
+            // Usamos la ruta de historial completo
+            const res = await fetch(`/api/management/historial-cuotas/${socioId}`);
+            const cuotas = await res.json();
+
+            const tbody = document.getElementById('tablaCuotas');
+            tbody.innerHTML = '';
+            
+            const pendientes = cuotas.filter(c => c.estado === 'PENDIENTE').length;
+            document.getElementById('resumenCuotas').innerText = pendientes;
+
+            cuotas.forEach(c => {
+                const fechaV = new Date(c.fecha_vencimiento).toLocaleDateString();
+                const fechaP = c.fecha_pago ? new Date(c.fecha_pago).toLocaleDateString() : '-';
+                const badgeClass = c.estado === 'PAGADO' ? 'badge-pagado' : 'badge-pendiente';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><b>${c.numero_cuota}</b></td>
+                        <td>${fechaV}</td>
+                        <td>$${parseFloat(c.monto_cuota).toFixed(2)}</td>
+                        <td><span class="badge ${badgeClass}">${c.estado}</span></td>
+                        <td>${fechaP}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('dashboardSocio').style.display = 'block';
+        } catch (err) { 
+            console.error(err);
+            alert("Error al cargar el historial del socio.");
+        }
+    }
+
+    window.onload = cargarSocios;
+</script>
+</body>
+</html>

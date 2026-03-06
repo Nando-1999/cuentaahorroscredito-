@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recaudación | ContaSistemas Core</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #06b6d4;
+            --bg: #020617; 
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .payment-card {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 480px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        h2 {
+            font-weight: 800;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            text-align: center;
+            background: linear-gradient(to right, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .input-group { margin-bottom: 24px; }
+
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: #0f172a;
+            color: white;
+            font-weight: 500;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.1);
+        }
+
+        #infoDeuda {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid var(--accent);
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .btn-pay {
+            background: var(--accent);
+            color: var(--primary);
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            border: none;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            transition: all 0.3s;
+        }
+
+        .btn-pay:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 25px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="payment-card">
+    <h2><i class="fas fa-receipt" style="color: var(--accent); margin-right: 10px;"></i>Recaudación</h2>
+    
+    <form id="formPago">
+        <div class="input-group">
+            <label>Socio Deudor</label>
+            <select id="socioId" required onchange="actualizarInfoDeuda()">
+                <option value="">Cargando socios...</option>
+            </select>
+        </div>
+        
+        <div id="infoDeuda">
+            <p style="margin: 0; font-size: 0.9rem; font-weight: 600;">
+                <i class="fas fa-info-circle"></i> <span id="montoDeuda">Calculando...</span>
+            </p>
+        </div>
+
+        <div class="input-group">
+            <label>Valor a Cobrar ($)</label>
+            <input type="number" id="montoPago" step="0.01" placeholder="0.00" required>
+        </div>
+
+        <div class="input-group">
+            <label>Detalle / Referencia</label>
+            <input type="text" id="referencia" placeholder="Ej: Pago de cuota mensual">
+        </div>
+
+        <button type="submit" class="btn-pay">Confirmar y Generar Recibo</button>
+        <a href="panel.html" class="back-link"><i class="fas fa-chevron-left"></i> Regresar al Panel</a>
+    </form>
+</div>
+
+<script>
+    // --- 1. CARGA DE DATOS ---
+    async function cargarDeudores() {
+        const select = document.getElementById('socioId');
+        try {
+            const res = await fetch('/api/management/cuentas-por-cobrar');
+            const data = await res.json();
+            select.innerHTML = '<option value="">-- Seleccione Socio --</option>';
+            data.forEach(s => {
+                select.innerHTML += `<option value="${s.id}">${s.nombre}</option>`;
+            });
+        } catch (err) { console.error(err); }
+    }
+
+    async function actualizarInfoDeuda() {
+        const id = document.getElementById('socioId').value;
+        const div = document.getElementById('infoDeuda');
+        if (!id) { div.style.display = 'none'; return; }
+
+        try {
+            const res = await fetch(`/api/management/cuotas-pendientes/${id}`);
+            const cuotas = await res.json();
+
+            if (cuotas.length > 0) {
+                const q = cuotas[0];
+                document.getElementById('montoDeuda').innerText = `Cuota #${q.numero_cuota}: $${parseFloat(q.monto_cuota).toFixed(2)}`;
+                document.getElementById('montoPago').value = parseFloat(q.monto_cuota).toFixed(2);
+                document.getElementById('montoPago').dataset.cuotaId = q.id;
+                document.getElementById('referencia').value = `Cobro Cuota #${q.numero_cuota}`;
+                div.style.display = 'block';
+            } else {
+                div.style.display = 'none';
+            }
+        } catch (err) { console.error(err); }
+    }
+
+    // --- 2. FUNCIÓN DE IMPRESIÓN ---
+    function imprimirRecibo(socio, monto, ref) {
+        const fecha = new Date().toLocaleString();
+        const ventanaPrint = window.open('', 'PRINT', 'height=600,width=400');
+        ventanaPrint.document.write(`
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Courier New', monospace; width: 280px; padding: 10px; font-size: 12px; color: black; }
+                    .center { text-align: center; }
+                    .bold { font-weight: bold; }
+                    .divider { border-top: 1px dashed #000; margin: 10px 0; }
+                    .monto { font-size: 16px; margin: 10px 0; }
+                </style>
+            </head>
+            <body onload="window.print();window.close()">
+                <div class="center bold" style="font-size: 14px;">CONTASISTEMAS S.A.</div>
+                <div class="center">Quito, Ecuador</div>
+                <div class="divider"></div>
+                <div class="center bold">COMPROBANTE DE RECAUDACIÓN</div>
+                <div class="divider"></div>
+                <p><b>FECHA:</b> ${fecha}</p>
+                <p><b>SOCIO:</b> ${socio}</p>
+                <p><b>CONCEPTO:</b> ${ref}</p>
+                <div class="divider"></div>
+                <div class="center bold monto">VALOR PAGADO: $${parseFloat(monto).toFixed(2)}</div>
+                <div class="divider"></div>
+                <p class="center" style="font-size: 10px; margin-top: 20px;">Gracias por mantener su crédito al día.</p>
+            </body>
+            </html>
+        `);
+        ventanaPrint.document.close();
+    }
+
+    // --- 3. PROCESAR TRANSACCIÓN ---
+    document.getElementById('formPago').onsubmit = async (e) => {
+        e.preventDefault();
+        const socioSelect = document.getElementById('socioId');
+        const nombreSocio = socioSelect.options[socioSelect.selectedIndex].text;
+        const monto = document.getElementById('montoPago').value;
+        const referencia = document.getElementById('referencia').value;
+
+        const datos = {
+            tipo_operacion: 'cobro_cuota',
+            entity_id: socioSelect.value,
+            total: monto,
+            cuota_id: document.getElementById('montoPago').dataset.cuotaId,
+            referencia: referencia
+        };
+
+        try {
+            const res = await fetch('/api/sales/procesar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+            const result = await res.json();
+            
+            if (result.success) {
+                imprimirRecibo(nombreSocio, monto, referencia);
+                alert("✅ Pago registrado y recibo generado.");
+                window.location.href = 'panel.html';
+            }
+        } catch (err) {
+            alert("Error al procesar el pago");
+        }
+    };
+
+    window.onload = cargarDeudores;
+</script>
+</body>
+</html>

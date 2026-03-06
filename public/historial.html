@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial de Socio | ContaSistemas Core</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a; --card: rgba(30, 41, 59, 0.7); --accent: #06b6d4;
+            --border: rgba(255,255,255,0.1); --text-dim: #94a3b8;
+        }
+        body { 
+            background: var(--bg); 
+            color: white; 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            padding: 40px; 
+            min-height: 100vh;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        
+        /* Header & Search */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .search-box { 
+            background: var(--card); border: 1px solid var(--border); padding: 10px 20px; 
+            border-radius: 20px; display: flex; align-items: center; width: 400px;
+        }
+        
+        /* Table Style */
+        .kardex-card { 
+            background: var(--card); backdrop-filter: blur(15px); 
+            border: 1px solid var(--border); border-radius: 24px; padding: 30px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { text-align: left; padding: 15px; color: var(--text-dim); font-size: 0.8rem; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 18px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; }
+        
+        /* Amount Colors */
+        .monto-positivo { color: #10b981; font-weight: 700; }
+        .badge { background: rgba(6, 182, 212, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; }
+        
+        select#selectSocio {
+            background: transparent; color: white; border: none; width: 100%; outline: none; cursor: pointer; font-size: 1rem;
+        }
+        select#selectSocio option { color: black; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>
+            <h1 style="font-weight: 800; letter-spacing: -1px; font-size: 2.5rem;">Expediente de Socio</h1>
+            <p style="color: var(--text-dim);">Consulta el historial de movimientos financieros de Alejandra.</p>
+        </div>
+        <div class="search-box">
+            <i class="fas fa-user-search" style="color: var(--accent); margin-right: 15px;"></i>
+            <select id="selectSocio" onchange="cargarKardex(this.value)">
+                <option value="">Seleccionar Socio...</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="kardex-card">
+        <table id="tablaKardex">
+            <thead>
+                <tr>
+                    <th>FECHA</th>
+                    <th>DETALLE / CONCEPTO</th>
+                    <th>REFERENCIA</th>
+                    <th style="text-align: right;">MONTO TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 40px;">
+                        Selecciona un socio para cargar su expediente profesional.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // 1. Cargar la lista de socios al iniciar
+    async function cargarListaSocios() {
+        try {
+            const res = await fetch('/api/gestion/socios-lista');
+            if (!res.ok) throw new Error("Error en la red");
+            const socios = await res.json();
+            const select = document.getElementById('selectSocio');
+            
+            socios.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nombre;
+                select.appendChild(opt);
+            });
+        } catch (err) {
+            console.error("Error cargando socios:", err);
+        }
+    }
+
+    // 2. Cargar el historial (Kardex) del socio seleccionado
+    async function cargarKardex(id) {
+    const tbody = document.querySelector('#tablaKardex tbody');
+    if(!id) return;
+
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;"><i class="fas fa-spinner fa-spin"></i> Accediendo...</td></tr>';
+
+    try {
+        const res = await fetch(`/api/management/kardex/${id}`);
+        const data = await res.json();
+        
+        console.log("Datos recibidos para la tabla:", data); // Verifica esto en consola
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Este socio no tiene movimientos.</td></tr>';
+            return;
+        }
+
+        data.forEach(mov => {
+            // Usamos los nombres exactos que vienen de tu SQL: fecha, detalle, monto, referencia
+            const fechaFormateada = new Date(mov.fecha).toLocaleDateString('es-EC');
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td style="color: var(--text-dim);">${fechaFormateada}</td>
+                    <td><span style="font-weight:700">${mov.detalle || 'Sin detalle'}</span></td>
+                    <td><span class="badge">${mov.referencia || 'GENERAL'}</span></td>
+                    <td style="text-align: right;" class="monto-positivo">
+                        $ ${parseFloat(mov.monto || 0).toFixed(2)}
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (err) {
+        console.error("Error al renderizar tabla:", err);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Error al mostrar los datos.</td></tr>';
+    }
+}
+
+    window.onload = cargarListaSocios;
+</script>
+
+</body>
+</html>

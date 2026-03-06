@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cuentas por Cobrar | ContaSistemas S.A.</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #0f172a;
+            --accent-cyan: #06b6d4;
+            --plomo-pizarra: #94a3b8;
+            --bg-body: #f8fafc;
+            --white: #ffffff;
+            --sidebar-width: 280px;
+            --danger: #ef4444;
+            --border-color: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg-body); overflow: hidden; }
+
+        /* --- SIDEBAR --- */
+        .sidebar { width: var(--sidebar-width); background: var(--primary-dark); color: white; padding: 30px 20px; }
+        .logo-section { display: flex; align-items: center; gap: 15px; padding-bottom: 40px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px; }
+        .logo-section i { color: var(--accent-cyan); font-size: 1.8rem; }
+        .logo-section span { font-weight: 800; font-size: 1.1rem; text-transform: uppercase; }
+        .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 15px; color: var(--plomo-pizarra); text-decoration: none; border-radius: 12px; font-weight: 600; margin-bottom: 8px; }
+        .nav-link.active { background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan); }
+
+        /* --- CONTENIDO --- */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        header { height: 80px; background: var(--white); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; border-bottom: 1px solid var(--border-color); }
+        .container { padding: 40px; max-width: 1200px; margin: 0 auto; width: 100%; }
+
+        /* --- TARJETAS DE RESUMEN --- */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--white); padding: 25px; border-radius: 20px; border: 1px solid var(--border-color); }
+        .stat-card h3 { font-size: 0.8rem; color: var(--plomo-pizarra); text-transform: uppercase; margin-bottom: 10px; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 800; color: var(--danger); }
+
+        /* --- TABLA --- */
+        .table-card { background: var(--white); border-radius: 24px; border: 1px solid var(--border-color); padding: 25px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 15px; color: var(--plomo-pizarra); font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; }
+        td { padding: 18px 15px; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; font-weight: 600; }
+        
+        .btn-pay { background: var(--primary-dark); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 0.75rem; font-weight: 700; transition: 0.3s; }
+        .btn-pay:hover { background: var(--accent-cyan); color: var(--primary-dark); }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo-section"><i class="fas fa-landmark"></i><span>CONTA SISTEMAS</span></div>
+        <ul class="nav-list" style="list-style:none">
+            <li><a href="panel.html" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="gestion-socios.html" class="nav-link"><i class="fas fa-users"></i> Gestión Socios</a></li>
+            <li><a href="prestamos.html" class="nav-link"><i class="fas fa-hand-holding-dollar"></i> Préstamos</a></li>
+            <li><a href="cuentas-cobrar.html" class="nav-link active"><i class="fas fa-file-invoice-dollar"></i> Ctas. por Cobrar</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <div style="font-weight: 800;">CARTERA DE CRÉDITOS VIGENTES</div>
+            <div id="fechaActual" style="font-weight: 700; font-size: 0.8rem; color: var(--plomo-pizarra);"></div>
+        </header>
+
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Cartera por Recuperar</h3>
+                    <div class="value" id="totalCartera">$0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Número de Deudores</h3>
+                    <div class="value" id="numDeudores" style="color: var(--primary-dark)">0</div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Socio / Deudor</th>
+                            <th>Identificación</th>
+                            <th style="text-align: right;">Saldo Pendiente</th>
+                            <th style="text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCuentas">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function cargarCartera() {
+            try {
+                const res = await fetch('/api/gestion/cuentas-por-cobrar');
+                const deudores = await res.json();
+                
+                const tbody = document.getElementById('tablaCuentas');
+                let total = 0;
+                tbody.innerHTML = '';
+
+                deudores.forEach(d => {
+                    total += parseFloat(d.saldo_prestamo);
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${d.nombre}</td>
+                            <td style="color: var(--plomo-pizarra)">${d.dni_ruc}</td>
+                            <td style="text-align: right; color: var(--danger); font-weight: 800;">$${parseFloat(d.saldo_prestamo).toFixed(2)}</td>
+                            <td style="text-align: center;">
+                                <button class="btn-pay" onclick="cobrar(${d.id})"><i class="fas fa-cash-register"></i> COBRAR CUOTA</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                document.getElementById('totalCartera').innerText = `$${total.toFixed(2)}`;
+                document.getElementById('numDeudores').innerText = deudores.length;
+
+            } catch (err) {
+                console.error("Error al cargar cartera");
+            }
+        }
+
+        function cobrar(id) {
+            alert("Módulo de recepción de pagos en desarrollo. ID Socio: " + id);
+        }
+
+        document.getElementById('fechaActual').innerText = new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        window.onload = cargarCartera;
+    </script>
+</body>
+</html>

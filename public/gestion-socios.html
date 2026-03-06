@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Entidades | ContaSistemas S.A.</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #0f172a;
+            --accent-cyan: #06b6d4;
+            --plomo-pizarra: #94a3b8;
+            --bg-body: #f8fafc;
+            --white: #ffffff;
+            --sidebar-width: 280px;
+            --success-green: #10b981;
+            --border-color: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        body { 
+            display: flex; 
+            height: 100vh; 
+            background-color: var(--bg-body); 
+            color: var(--primary-dark);
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--primary-dark);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 30px 20px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 20px;
+        }
+
+        .logo-section i { color: var(--accent-cyan); font-size: 1.8rem; }
+        .logo-section span { font-weight: 800; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        .nav-list { list-style: none; flex: 1; }
+        .nav-link {
+            display: flex; align-items: center; gap: 12px; padding: 12px 15px;
+            color: var(--plomo-pizarra); text-decoration: none; border-radius: 12px;
+            font-weight: 600; transition: 0.3s; font-size: 0.9rem; margin-bottom: 8px;
+        }
+
+        .nav-link:hover, .nav-link.active { background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan); }
+
+        /* --- CONTENIDO --- */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+
+        header {
+            height: 80px; background: var(--white); display: flex;
+            align-items: center; justify-content: space-between; padding: 0 40px;
+            border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 10;
+        }
+
+        .container { padding: 40px; max-width: 1300px; margin: 0 auto; width: 100%; }
+
+        .welcome-hero { margin-bottom: 35px; }
+        .welcome-hero h1 { font-size: 2rem; font-weight: 800; letter-spacing: -1px; }
+        .welcome-hero p { color: var(--plomo-pizarra); font-size: 1rem; }
+
+        /* --- FORMULARIO CENTRALIZADO --- */
+        .form-card {
+            background: var(--white); padding: 30px; border-radius: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); border: 1px solid var(--border-color);
+            margin-bottom: 40px; max-width: 800px;
+        }
+
+        .form-card h2 {
+            font-size: 1.25rem; font-weight: 800; margin-bottom: 25px;
+            display: flex; align-items: center; gap: 12px;
+        }
+
+        .form-card h2 i { 
+            background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);
+            padding: 10px; border-radius: 10px; font-size: 1.1rem;
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label { 
+            display: block; font-weight: 700; font-size: 0.75rem; 
+            color: var(--plomo-pizarra); margin-bottom: 8px; 
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        
+        input, select {
+            width: 100%; padding: 12px 16px; border-radius: 12px;
+            border: 2px solid #f1f5f9; background: #f8fafc; outline: none;
+            font-size: 0.95rem; font-weight: 600; transition: 0.3s;
+        }
+
+        input:focus, select:focus { border-color: var(--accent-cyan); background: var(--white); }
+
+        .btn-save {
+            background: var(--primary-dark); color: white; padding: 14px 24px;
+            border-radius: 12px; border: none; font-weight: 700; cursor: pointer;
+            transition: 0.3s; display: flex; align-items: center; gap: 10px; font-size: 0.9rem;
+        }
+
+        .btn-save:hover { background: var(--accent-cyan); color: var(--primary-dark); transform: translateY(-2px); }
+
+        /* --- TABLA --- */
+        .table-container {
+            background: var(--white); border-radius: 24px; border: 1px solid var(--border-color);
+            padding: 20px;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { 
+            text-align: left; padding: 15px; color: var(--plomo-pizarra); 
+            font-size: 0.75rem; text-transform: uppercase; font-weight: 800;
+            border-bottom: 1px solid #f1f5f9; 
+        }
+        td { padding: 18px 15px; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; }
+        
+        .badge { 
+            padding: 6px 12px; border-radius: 8px; font-size: 0.7rem; 
+            font-weight: 800; text-transform: uppercase;
+        }
+        .badge-socio { background: #dcfce7; color: #166534; }
+        .badge-inv { background: #e0f2fe; color: #0369a1; }
+
+        .action-btn {
+            width: 35px; height: 35px; border-radius: 8px; border: none;
+            cursor: pointer; transition: 0.2s; display: inline-flex;
+            align-items: center; justify-content: center;
+        }
+        .btn-view { background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan); }
+        .btn-delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo-section">
+            <i class="fas fa-landmark"></i>
+            <span>CONTA SISTEMAS</span>
+        </div>
+        <ul class="nav-list">
+            <li><a href="panel.html" class="nav-link"><i class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="gestion-socios.html" class="nav-link active"><i class="fas fa-users"></i> Gestión Socios</a></li>
+            <li><a href="depositos.html" class="nav-link"><i class="fas fa-vault"></i> Depósitos</a></li>
+            <li><a href="prestamos.html" class="nav-link"><i class="fas fa-hand-holding-dollar"></i> Préstamos</a></li>
+            <li><a href="libro-diario.html" class="nav-link"><i class="fas fa-book"></i> Libro Diario</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <div class="user-info" style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; background: var(--accent-cyan); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary-dark); font-weight: 800;">
+                    FM
+                </div>
+                <div>
+                    <span style="display: block; font-weight: 800; font-size: 0.9rem;">Ing. Fernando Masache</span>
+                    <span style="display: block; color: var(--plomo-pizarra); font-size: 0.7rem; font-weight: 700;">ADMINISTRADOR</span>
+                </div>
+            </div>
+            <a href="panel.html" style="text-decoration: none; color: var(--primary-dark); font-weight: 700; font-size: 0.8rem; background: #f1f5f9; padding: 8px 16px; border-radius: 10px;">
+                <i class="fas fa-arrow-left"></i> VOLVER AL PANEL
+            </a>
+        </header>
+
+        <div class="container">
+            <div class="welcome-hero">
+                <h1>Gestión de Socios</h1>
+                <p>Administra los perfiles, identifica socios y controla sus saldos disponibles.</p>
+            </div>
+
+            <div class="form-card">
+                <h2><i class="fas fa-user-plus"></i> Registro de Nueva Entidad</h2>
+                <form id="formSocio" onsubmit="event.preventDefault(); guardarSocio();">
+                    <div class="form-group">
+                        <label>Nombre Completo / Razón Social</label>
+                        <input type="text" id="socioNombre" placeholder="Ej: Alejandra Tipan" required>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Identificación (DNI / RUC)</label>
+                            <input type="text" id="socioCedula" placeholder="17xxxxxxxx" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Perfil de Cuenta</label>
+                            <select id="socioTipo">
+                                <option value="Socio">Socio Ahorrista</option>
+                                <option value="Inversionista">Inversionista</option>
+                                <option value="Proveedor">Proveedor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-check-circle"></i> GUARDAR SOCIO EN SISTEMA
+                    </button>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="font-weight: 800; font-size: 1.1rem;"><i class="fas fa-list" style="color: var(--accent-cyan); margin-right: 10px;"></i> Directorio de Socios</h2>
+                    <button onclick="cargarSocios()" class="action-btn btn-view" style="width: auto; padding: 0 15px;"><i class="fas fa-sync-alt"></i></button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre del Socio</th>
+                            <th>Identificación</th>
+                            <th>Tipo</th>
+                            <th style="text-align: right;">Saldo Ahorro</th>
+                            <th style="text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaSociosBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // CARGAR SOCIOS AL INICIO
+        async function cargarSocios() {
+            const tbody = document.getElementById('tablaSociosBody');
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px;">Cargando registros...</td></tr>';
+
+            try {
+                const res = await fetch('/api/gestion/socios-lista');
+                const socios = await res.json();
+                tbody.innerHTML = ''; 
+
+                if (socios.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px;">No hay socios registrados.</td></tr>';
+                    return;
+                }
+
+                socios.forEach(socio => {
+                    const saldo = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(socio.saldo_ahorro || 0);
+                    const badgeClass = socio.tipo === 'Inversionista' ? 'badge-inv' : 'badge-socio';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight: 700;">${socio.nombre}</td>
+                            <td style="color: var(--plomo-pizarra);">${socio.dni_ruc}</td>
+                            <td><span class="badge ${badgeClass}">${socio.tipo}</span></td>
+                            <td style="font-weight: 800; text-align: right; color: var(--primary-dark);">$${parseFloat(socio.saldo_ahorro).toFixed(2)}</td>
+                            <td style="text-align: center;">
+                                <button class="action-btn btn-view" title="Kardex"><i class="fas fa-eye"></i></button>
+                                <button class="action-btn btn-delete" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#ef4444; padding:40px;">Error de conexión.</td></tr>';
+            }
+        }
+
+        // GUARDAR SOCIO
+        async function guardarSocio() {
+            const nombre = document.getElementById('socioNombre').value;
+            const dni = document.getElementById('socioCedula').value;
+            const tipo = document.getElementById('socioTipo').value;
+
+            try {
+                const response = await fetch('/api/gestion/socio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, dni, tipo })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert("✅ Socio guardado correctamente");
+                    document.getElementById('formSocio').reset();
+                    cargarSocios();
+                } else {
+                    alert("❌ Error: " + result.error);
+                }
+            } catch (error) {
+                alert("❌ Error de comunicación con el servidor");
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', cargarSocios);
+    </script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Cobranzas | ContaSistemas S.A.</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #0f172a;
+            --accent-green: #10b981;
+            --bg-body: #020617; /* Fondo oscuro tipo panel */
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --sidebar-width: 280px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg-body); color: var(--text-main); overflow: hidden; }
+
+        /* --- SIDEBAR --- */
+        .sidebar { width: var(--sidebar-width); background-color: var(--primary-dark); color: white; padding: 30px 20px; border-right: 1px solid rgba(255,255,255,0.05); }
+        .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 15px; color: var(--text-muted); text-decoration: none; border-radius: 12px; font-weight: 600; margin-bottom: 8px; transition: 0.3s; }
+        .nav-link.active { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
+        .nav-link:hover { color: white; background: rgba(255,255,255,0.05); }
+
+        /* --- CONTENIDO --- */
+        .main-content { flex: 1; overflow-y: auto; padding: 40px; }
+        .container { max-width: 800px; margin: 0 auto; }
+
+        .card { background: var(--card-bg); border-radius: 24px; padding: 35px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 700; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
+        
+        input, select { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #0f172a; color: white; font-weight: 600; outline: none; transition: 0.3s; }
+        input:focus, select:focus { border-color: var(--accent-green); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
+
+        /* --- INFO BOX --- */
+        .loan-info-box { 
+            background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent-green); border-radius: 16px; 
+            padding: 20px; margin-bottom: 25px; display: none;
+            grid-template-columns: repeat(2, 1fr); gap: 15px;
+            animation: fadeIn 0.4s ease;
+        }
+        .info-label { font-size: 0.65rem; font-weight: 800; color: var(--accent-green); text-transform: uppercase; }
+        .info-value { font-size: 1.1rem; font-weight: 700; color: white; display: block; }
+
+        .btn-cobrar { 
+            width: 100%; padding: 18px; background: var(--accent-green); color: var(--primary-dark); 
+            border: none; border-radius: 16px; font-weight: 800; cursor: pointer; 
+            display: flex; justify-content: center; align-items: center; gap: 10px; transition: 0.3s; 
+            text-transform: uppercase;
+        }
+        .btn-cobrar:hover { background: #34d399; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); }
+        .btn-cobrar:disabled { background: #475569; cursor: not-allowed; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div style="margin-bottom: 40px; font-weight: 800; font-size: 1.1rem; color: var(--accent-green);">
+            <i class="fas fa-hand-holding-dollar"></i> CONTA SISTEMAS
+        </div>
+        <nav>
+            <a href="panel.html" class="nav-link"><i class="fas fa-chart-line"></i> Dashboard</a>
+            <a href="gestion-socios.html" class="nav-link"><i class="fas fa-users"></i> Socios</a>
+            <a href="depositos.html" class="nav-link"><i class="fas fa-vault"></i> Depósitos</a>
+            <a href="prestamos.html" class="nav-link"><i class="fas fa-file-invoice-dollar"></i> Préstamos</a>
+            <a href="cobranzas.html" class="nav-link active"><i class="fas fa-cash-register"></i> Cobranzas</a>
+            <a href="libro-diario.html" class="nav-link"><i class="fas fa-book"></i> Libro Diario</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="container">
+            <header style="margin-bottom: 30px;">
+                <h1 style="font-weight: 800; font-size: 2rem; letter-spacing: -1px; color: white;">Recaudación de Cuotas</h1>
+                <p style="color: var(--text-muted);">Ingresa el pago del socio para amortizar su deuda.</p>
+            </header>
+
+            <div class="card">
+                <form id="formCobranza">
+                    <div class="form-group">
+                        <label>Socio que Realiza el Pago</label>
+                        <select id="entity_id" required onchange="consultarDeuda(this.value)">
+                            <option value="">-- Seleccione un socio con préstamo --</option>
+                        </select>
+                    </div>
+
+                    <div id="boxInfoDeuda" class="loan-info-box">
+                        <div>
+                            <span class="info-label">Cuota Pendiente</span>
+                            <span class="info-value" id="val_cuota_num"># 0</span>
+                        </div>
+                        <div>
+                            <span class="info-label">Valor Sugerido</span>
+                            <span class="info-value" id="val_cuota_monto">$ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Valor a Cobrar ($)</label>
+                            <input type="number" id="monto" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Forma de Recaudación</label>
+                            <select id="referencia_pago">
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                                <option value="Cheque">Cheque</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Observaciones / Detalle</label>
+                        <input type="text" id="nota" placeholder="Ej: Pago cuota marzo 2026">
+                    </div>
+
+                    <button type="submit" class="btn-cobrar" id="btnProcesar">
+                        <i class="fas fa-print"></i> PROCESAR Y GENERAR RECIBO
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    // 1. Cargar socios deudores al iniciar
+    async function cargarSocios() {
+        const select = document.getElementById('entity_id');
+        try {
+            const res = await fetch('/api/management/cuentas-por-cobrar');
+            const socios = await res.json();
+            
+            let opciones = '<option value="">-- Seleccione un deudor --</option>';
+            socios.forEach(s => {
+                opciones += `<option value="${s.id}">${s.nombre} (Deuda: $${s.saldo_prestamo})</option>`;
+            });
+            select.innerHTML = opciones;
+        } catch (err) { console.error("Error cargando socios:", err); }
+    }
+
+    // 2. Consultar cuotas al seleccionar socio
+    async function consultarDeuda(socioId) {
+        const box = document.getElementById('boxInfoDeuda');
+        const inputMonto = document.getElementById('monto');
+        const inputNota = document.getElementById('nota');
+
+        if(!socioId) { box.style.display = 'none'; return; }
+
+        try {
+            const res = await fetch(`/api/management/cuotas-pendientes/${socioId}`);
+            const cuotas = await res.json();
+            
+            if(cuotas.length > 0) {
+                const proxima = cuotas[0];
+                box.style.display = 'grid';
+                document.getElementById('val_cuota_num').innerText = `Cuota #${proxima.numero_cuota}`;
+                document.getElementById('val_cuota_monto').innerText = `$ ${parseFloat(proxima.monto_cuota).toFixed(2)}`;
+                
+                inputMonto.value = parseFloat(proxima.monto_cuota).toFixed(2);
+                inputMonto.dataset.cuotaId = proxima.id; 
+                inputNota.value = `Pago Cuota #${proxima.numero_cuota}`;
+            } else {
+                alert("Este socio no tiene cuotas pendientes programadas.");
+                box.style.display = 'none';
+            }
+        } catch (err) { console.error(err); }
+    }
+
+    // 3. Función de Impresión (Recibo Térmico)
+    function imprimirRecibo(socio, monto, ref) {
+        const fecha = new Date().toLocaleString();
+        const ventanaPrint = window.open('', 'PRINT', 'height=600,width=400');
+        ventanaPrint.document.write(`
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Courier New', monospace; width: 280px; padding: 10px; font-size: 12px; color: black; }
+                    .center { text-align: center; }
+                    .bold { font-weight: bold; }
+                    .divider { border-top: 1px dashed #000; margin: 10px 0; }
+                    .monto { font-size: 16px; margin: 10px 0; }
+                </style>
+            </head>
+            <body onload="window.print();window.close()">
+                <div class="center bold" style="font-size: 14px;">CONTASISTEMAS S.A.</div>
+                <div class="divider"></div>
+                <div class="center bold">RECIBO DE PAGO</div>
+                <div class="divider"></div>
+                <p><b>FECHA:</b> ${fecha}</p>
+                <p><b>SOCIO:</b> ${socio}</p>
+                <p><b>DETALLE:</b> ${ref}</p>
+                <div class="divider"></div>
+                <div class="center bold monto">TOTAL: $${parseFloat(monto).toFixed(2)}</div>
+                <div class="divider"></div>
+                <p class="center" style="font-size: 10px;">¡Gracias por su pago!</p>
+            </body>
+            </html>
+        `);
+        ventanaPrint.document.close();
+    }
+
+    // 4. Procesar el Formulario
+    document.getElementById('formCobranza').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnProcesar');
+        const socioSelect = document.getElementById('entity_id');
+        const nombreSocio = socioSelect.options[socioSelect.selectedIndex].text;
+        const monto = document.getElementById('monto').value;
+        const nota = document.getElementById('nota').value;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PROCESANDO...';
+
+        const datos = {
+            tipo_operacion: 'cobro_cuota',
+            entity_id: socioSelect.value,
+            total: monto,
+            cuota_id: document.getElementById('monto').dataset.cuotaId,
+            referencia: `${document.getElementById('referencia_pago').value} - ${nota}`
+        };
+
+        try {
+            const res = await fetch('/api/sales/procesar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+
+            const result = await res.json();
+            if(result.success) {
+                imprimirRecibo(nombreSocio, monto, datos.referencia);
+                alert("✅ Pago registrado con éxito.");
+                window.location.href = 'panel.html';
+            } else {
+                alert("Error: " + result.error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-print"></i> PROCESAR Y GENERAR RECIBO';
+            }
+        } catch (err) {
+            alert("Error de conexión.");
+            btn.disabled = false;
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', cargarSocios);
+    </script>
+</body>
+</html>
