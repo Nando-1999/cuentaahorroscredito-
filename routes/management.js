@@ -211,4 +211,93 @@ router.post('/retirar-dinero', async (req, res) => {
 });
 
 
+// --- 10. PROCESAR NUEVO PRÉSTAMO / REFINANCIAMIENTO ---
+router.post('/solicitar-prestamo', async (req, res) => {
+    const { entity_id, monto_solicitado, cuotas, concepto } = req.body;
+    let conn;
+
+    try {
+        conn = await db.getConnection();
+        await conn.beginTransaction();
+
+        // 1. Verificar deuda actual del socio
+        const [socio] = await conn.query(
+            "SELECT nombre, saldo_prestamo, monto_ultimo_prestamo FROM entities WHERE id = ?", 
+            [entity_id]
+        );
+
+        if (!socio.length) throw new Error("Socio no encontrado");
+
+        const deudaActual = parseFloat(socio[0].saldo_prestamo || 0);
+        const montoOriginal = parseFloat(socio[0].monto_ultimo_prestamo || 0);
+
+        // 2. Lógica de validación
+        if (deudaActual > 0) {
+            const pagado = montoOriginal - deudaActual;
+            const porcentajePagado = (pagado / montoOriginal) * 100;
+
+            // REGLA DEL 50%
+            if (porcentajePagado < 50) {
+                throw new Error(`No puede realizar otro préstamo. Solo ha pagado el ${porcentajePagado.toFixed(1)}% de su deuda actual. Debe superar el 50%.`);
+            }
+
+            // Si pasa el 50%, calculamos el refinanciamiento
+            // El nuevo préstamo debe ser mayor a la deuda para que reciba algo de dinero
+            if (parseFloat(monto_solicitado) <= deudaActual) {
+                throw new Error(`El nuevo monto ($${monto_solicitado}) debe ser mayor a la deuda actual ($${deudaActual.toFixed(2)}) para liquidar el anterior.`);
+            }
+
+            // 3. LIQUIDAR PRÉSTAMO ANTERIOR
+            // Marcamos las cuotas viejas como 'REFINANCIADAS'
+            await conn.query(
+                "UPDATE loan_schedule SET estado = 'REFINANCIADA' WHERE entity_id = ? AND estado = 'PENDIENTE'",
+                [entity_id]
+            );
+
+            await conn.query(
+                "INSERT INTO journal_entries (entity_id, fecha, description, total, referencia_modulo) VALUES (?, NOW(), ?, ?, ?)",
+                [entity_id, `Liquidación de préstamo anterior por refinanciamiento`, deudaActual, 'CREDITOS']
+            );
+        }
+
+        // 4. CREAR EL NUEVO PRÉSTAMO
+        // Actualizamos la entidad con el nuevo saldo y el nuevo monto original
+        await conn.query(
+            "UPDATE entities SET saldo_prestamo = ?, monto_ultimo_prestamo = ? WHERE id = ?",
+            [monto_solicitado, monto_solicitado, entity_id]
+        );
+
+        // 5. GENERAR TABLA DE AMORTIZACIÓN (Ejemplo simple lineal)
+        const montoCuota = parseFloat(monto_solicitado) / parseInt(cuotas);
+        for (let i = 1; i <= cuotas; i++) {
+            await conn.query(
+                "INSERT INTO loan_schedule (entity_id, numero_cuota, monto_cuota, fecha_vencimiento, estado) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MONTH), 'PENDIENTE')",
+                [entity_id, i, montoCuota, i]
+            );
+        }
+
+        // 6. Registro en historial
+        const netoEntregado = monto_solicitado - deudaActual;
+        await conn.query(
+            "INSERT INTO journal_entries (entity_id, fecha, description, total, referencia_modulo) VALUES (?, NOW(), ?, ?, ?)",
+            [entity_id, `${concepto || 'Nuevo préstamo'} (Neto entregado: $${netoEntregado.toFixed(2)})`, monto_solicitado, 'CREDITOS']
+        );
+
+        await conn.commit();
+        res.json({ 
+            success: true, 
+            message: deudaActual > 0 ? "Refinanciamiento procesado con éxito" : "Préstamo creado con éxito",
+            neto_recibido: netoEntregado
+        });
+
+    } catch (err) {
+        if (conn) await conn.rollback();
+        console.error("❌ Error en solicitar-prestamo:", err);
+        res.status(400).json({ success: false, error: err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+
 module.exports = router;

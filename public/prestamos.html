@@ -197,35 +197,43 @@
     </main>
 
     <script>
-        // Cargar socios al iniciar
-        async function cargarSocios() {
-            try {
-                const res = await fetch('/api/gestion/socios-lista');
-                const socios = await res.json();
-                const select = document.getElementById('socioId');
-                select.innerHTML = '<option value="">Seleccione un socio...</option>';
-                socios.forEach(s => {
-                    select.innerHTML += `<option value="${s.id}">${s.nombre}</option>`;
-                });
-            } catch (err) { console.error("Error cargando socios"); }
+    // 1. Cargar socios al iniciar (Corregido el path a tu API de management)
+    async function cargarSocios() {
+        try {
+            const res = await fetch('/api/management/entities'); // Usamos la ruta que ya tienes en management.js
+            const socios = await res.json();
+            const select = document.getElementById('socioId');
+            select.innerHTML = '<option value="">Seleccione un socio...</option>';
+            socios.forEach(s => {
+                // Mostramos el saldo actual para que el admin sepa si debe
+                const deudaMsg = s.saldo_prestamo > 0 ? ` (Debe: $${parseFloat(s.saldo_prestamo).toFixed(2)})` : ' (Sin deuda)';
+                select.innerHTML += `<option value="${s.id}">${s.nombre}${deudaMsg}</option>`;
+            });
+        } catch (err) { 
+            console.error("Error cargando socios:", err); 
+        }
+    }
+
+    // 2. Sistema Francés (Se mantiene igual, es solo visual)
+    function calcularAmortizacion() {
+        const monto = parseFloat(document.getElementById('monto').value);
+        const tasaAnual = parseFloat(document.getElementById('tasa').value) / 100;
+        const meses = parseInt(document.getElementById('plazo').value);
+        
+        if (!monto || !meses || monto <= 0) {
+            alert("Por favor ingrese monto y plazo válido");
+            return;
         }
 
-        // Sistema Francés (Cuotas Fijas)
-        function calcularAmortizacion() {
-            const monto = parseFloat(document.getElementById('monto').value);
-            const tasaAnual = parseFloat(document.getElementById('tasa').value) / 100;
-            const meses = parseInt(document.getElementById('plazo').value);
-            
-            if (!monto || !meses) {
-                alert("Por favor ingrese monto y plazo válido");
-                return;
-            }
-
-            const tasaMensual = tasaAnual / 12;
-            const cuota = (monto * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -meses));
-            
-            let html = `
-                <h2 style="margin-bottom:20px; font-size:1rem;">Resumen de Amortización</h2>
+        const tasaMensual = tasaAnual / 12;
+        // Fórmula de cuota fija (Sistema Francés)
+        const cuota = (monto * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -meses));
+        
+        let html = `
+            <h2 style="margin-bottom:20px; font-size:1rem; color:var(--accent-cyan);">
+                <i class="fas fa-list-ol"></i> Proyección de Pagos (Cuota: $${cuota.toFixed(2)})
+            </h2>
+            <div style="overflow-x:auto;">
                 <table>
                     <thead>
                         <tr>
@@ -237,64 +245,77 @@
                         </tr>
                     </thead>
                     <tbody>`;
-            
-            let saldo = monto;
-            for (let i = 1; i <= meses; i++) {
-                let interesMes = saldo * tasaMensual;
-                let capitalMes = cuota - interesMes;
-                saldo -= capitalMes;
-                html += `
-                    <tr>
-                        <td>${i}</td>
-                        <td>$${cuota.toFixed(2)}</td>
-                        <td>$${interesMes.toFixed(2)}</td>
-                        <td>$${capitalMes.toFixed(2)}</td>
-                        <td>$${Math.abs(saldo).toFixed(2)}</td>
-                    </tr>`;
+        
+        let saldo = monto;
+        for (let i = 1; i <= meses; i++) {
+            let interesMes = saldo * tasaMensual;
+            let capitalMes = cuota - interesMes;
+            saldo -= capitalMes;
+            html += `
+                <tr>
+                    <td>${i}</td>
+                    <td>$${cuota.toFixed(2)}</td>
+                    <td>$${interesMes.toFixed(2)}</td>
+                    <td>$${capitalMes.toFixed(2)}</td>
+                    <td>$${Math.abs(saldo).toFixed(2)}</td>
+                </tr>`;
+        }
+        
+        html += `</tbody></table></div>`;
+        document.getElementById('resultadoContenedor').innerHTML = html;
+        document.getElementById('btnDesembolsar').style.display = 'flex';
+    }
+
+    // 3. Registrar en Base de Datos (CON LOGICA DE REFINANCIAMIENTO)
+    async function registrarPrestamo() {
+        const socioId = document.getElementById('socioId').value;
+        const monto = document.getElementById('monto').value;
+        const cuotas = document.getElementById('plazo').value;
+
+        if (!socioId || !monto || !cuotas) {
+            alert("Complete todos los campos antes de desembolsar.");
+            return;
+        }
+
+        if (!confirm(`¿Confirmar desembolso de $${monto} para el socio seleccionado?`)) return;
+
+        const datos = {
+            entity_id: socioId,
+            monto_solicitado: monto,
+            cuotas: cuotas,
+            concepto: `Crédito de consumo - ${cuotas} meses`
+        };
+
+        try {
+            // APUNTAMOS A LA NUEVA RUTA DE MANAGEMENT
+            const res = await fetch('/api/management/solicitar-prestamo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+                let msg = result.message;
+                if(result.neto_recibido) {
+                    msg += `\nSaldo neto entregado al socio: $${result.neto_recibido.toFixed(2)}`;
+                }
+                alert("✅ " + msg);
+                window.location.href = 'panel.html';
+            } else {
+                // Aquí es donde aparecerá el error del 50% si no cumple
+                alert("⚠️ ATENCIÓN: " + result.error);
             }
-            
-            html += `</tbody></table>`;
-            document.getElementById('resultadoContenedor').innerHTML = html;
-            document.getElementById('btnDesembolsar').style.display = 'flex';
+        } catch (error) {
+            console.error("Error en el fetch:", error);
+            alert("❌ Error de comunicación. Asegúrese que el servidor está corriendo.");
         }
-
-        // Registrar en Base de Datos - ACTUALIZADO A /api/sales/procesar
-async function registrarPrestamo() {
-    // Validamos que se haya seleccionado un socio
-    const socioId = document.getElementById('socioId').value;
-    if (!socioId) {
-        alert("Por favor, seleccione un socio de la lista.");
-        return;
     }
 
-    const datos = {
-        tipo_operacion: 'prestamo_desembolso',
-        entity_id: socioId,
-        total: document.getElementById('monto').value,
-        referencia: `Préstamo: ${document.getElementById('plazo').value} meses al ${document.getElementById('tasa').value}%`
-    };
+    document.addEventListener('DOMContentLoaded', cargarSocios);
+</script>
 
-    try {
-        // CAMBIO AQUÍ: Ahora coincide con app.use('/api/sales', salesRoutes) de tu server.js
-        const res = await fetch('/api/sales/procesar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(datos)
-        });
-
-        const result = await res.json();
-        if (result.success) {
-            alert("✅ Préstamo registrado y saldo deudor actualizado con éxito.");
-            window.location.href = 'panel.html';
-        } else {
-            alert("❌ Error del servidor: " + result.error);
-        }
-    } catch (error) {
-        console.error("Error en el fetch:", error);
-        alert("❌ Error de comunicación con el sistema. Revise la consola.");
-    }
-}
-        document.addEventListener('DOMContentLoaded', cargarSocios);
-    </script>
+    
 </body>
 </html>
